@@ -1,0 +1,368 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  FEMALE
+  MALE
+  OTHER
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  MISSED
+}
+
+enum EntryType {
+  VITALS
+  LAB
+}
+
+enum LabStatus {
+  ORDERED
+  COMPLETED
+}
+
+enum EntrySource {
+  STAFF
+  PATIENT
+}
+
+enum WomenRecordType {
+  CYCLE
+  ANTENATAL
+  POSTNATAL
+  OTHER
+}
+
+enum Severity {
+  INFO
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum AlertSource {
+  VITALS
+  WOMEN_HEALTH
+}
+
+enum RuleOperator {
+  GTE
+  LTE
+}
+
+enum NotifChannel {
+  IN_APP
+  EMAIL
+  SMS
+}
+
+enum NotifStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ───────────── Better Auth models (reconcile with CLI output) ─────────────
+model User {
+  id String @id @map("_id")
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  role          String    @default("patient")  // patient | doctor | nurse | receptionist | admin
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions      Session[]
+  accounts      Account[]
+
+  // Domain relations
+  patient       Patient?
+  staff         Staff?
+  auditLogs     AuditLog[]
+  notifications Notification[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @map("_id")
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("session")
+}
+
+model Account {
+  id                    String @id @map("_id")
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?   // Better Auth stores the password hash here
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @map("_id")
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verification")
+}
+
+// ───────────── Core domain (from the ER diagram) ─────────────
+model Patient {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  patientNumber  String   @unique            // human-readable, e.g. HMS-000123
+  userId         String   @unique   // 1:1 with User
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Demographic
+  fullName       String
+  gender         Gender
+  dateOfBirth    DateTime
+  phone          String?
+  address        String?
+  nextOfKinName  String?
+  nextOfKinPhone String?
+
+  // Medical history
+  bloodGroup      String?
+  allergies       String[]
+  knownConditions String[]
+  familyHistory   String?
+
+  // Lifestyle
+  smokingStatus    String?
+  alcoholUse       String?
+  physicalActivity String?
+  dietNotes        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments  Appointment[]
+  consultations Consultation[]
+  womenHealth   WomenHealthRecord[]
+  vitalsLabs    VitalsLabEntry[]
+  alerts        Alert[]
+}
+
+model Staff {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String  @unique    // 1:1 with User
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName   String
+  specialty  String?
+  department String?
+  phone      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments  Appointment[]
+  consultations Consultation[]
+}
+
+model Appointment {
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  patientId   String            @db.ObjectId
+  patient     Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  staffId     String            @db.ObjectId
+  staff       Staff             @relation(fields: [staffId], references: [id])
+  scheduledAt DateTime          // start of a 30-minute slot
+  reason      String?
+  status      AppointmentStatus @default(SCHEDULED)
+  reminderSentAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([patientId])
+  @@index([staffId, scheduledAt])
+}
+
+model Consultation {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  patientId String   @db.ObjectId
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  staffId   String   @db.ObjectId
+  staff     Staff    @relation(fields: [staffId], references: [id])
+  visitDate DateTime @default(now())
+  complaint String?
+  diagnosis String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  prescriptions Prescription[]
+
+  @@index([patientId, visitDate])
+}
+
+model Prescription {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  consultationId String       @db.ObjectId   // FK "visit_id"
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  drugName       String
+  dosage         String
+  duration       String
+  instructions   String?
+  createdAt      DateTime     @default(now())
+}
+
+model WomenHealthRecord {
+  id               String          @id @default(auto()) @map("_id") @db.ObjectId
+  patientId        String          @db.ObjectId
+  patient          Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  recordType       WomenRecordType @default(CYCLE)
+  recordedAt       DateTime        @default(now())
+  source           EntrySource     @default(STAFF)
+
+  // Cycle
+  cycleStart       DateTime?
+  cycleLength      Int?            // days
+
+  // Maternal
+  gravidity        Int?
+  parity           Int?
+  pregnancyWeek    Int?            // gestational age in weeks
+  antenatalVisitDate DateTime?
+
+  // Blood pressure (document's bp_reading, split)
+  bpSystolic       Int?
+  bpDiastolic      Int?
+
+  notes            String?
+  createdAt        DateTime        @default(now())
+
+  @@index([patientId, recordedAt])
+}
+
+model VitalsLabEntry {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  patientId   String      @db.ObjectId
+  patient     Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  entryType   EntryType   @default(VITALS)
+  source      EntrySource @default(STAFF)
+  recordedAt  DateTime    @default(now())
+  recordedByUserId String?     // who entered it (patient or staff user)
+
+  // Vitals (units: °C, bpm, mmHg, kg, cm, mmol/L)
+  temperature Float?
+  pulse       Int?
+  bpSystolic  Int?
+  bpDiastolic Int?
+  weight      Float?
+  height      Float?
+  bloodSugar  Float?
+
+  // Lab
+  testName    String?
+  labResult   String?
+  labRemarks  String?
+  labStatus   LabStatus?                      // set only when entryType = LAB
+  orderedByStaffId String? @db.ObjectId
+
+  createdAt   DateTime    @default(now())
+
+  @@index([patientId, recordedAt])
+}
+
+model AuditLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String?           // null only for system actions
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String                          // e.g. "PATIENT_VIEW", "CONSULTATION_CREATE"
+  entity     String?                         // e.g. "Patient"
+  entityId   String?
+  details    Json?
+  ipAddress  String?
+  timestamp  DateTime @default(now())
+
+  @@index([userId, timestamp])
+  @@index([entity, entityId])
+}
+
+// ───────────── Supporting models (additions) ─────────────
+model AlertRule {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  code      String       @unique       // e.g. BP_SYS_HIGH
+  label     String
+  metric    String       // bpSystolic | bpDiastolic | temperature | pulse | bloodSugar
+  operator  RuleOperator
+  threshold Float
+  severity  Severity
+  enabled   Boolean      @default(true)
+  updatedAt DateTime     @updatedAt
+}
+
+model Alert {
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  patientId      String      @db.ObjectId
+  patient        Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  sourceType     AlertSource
+  sourceId       String      @db.ObjectId
+  ruleCode       String
+  severity       Severity
+  message        String
+  status         AlertStatus @default(OPEN)
+  acknowledgedByUserId String?
+  createdAt      DateTime    @default(now())
+  resolvedAt     DateTime?
+
+  @@index([status, createdAt])
+  @@index([patientId])
+}
+
+model Notification {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel     NotifChannel @default(IN_APP)
+  type        String       // APPOINTMENT_REMINDER | RISK_ALERT | ACCOUNT | SYSTEM
+  title       String
+  body        String
+  status      NotifStatus  @default(PENDING)
+  readAt      DateTime?
+  relatedType String?
+  relatedId   String?
+  createdAt   DateTime     @default(now())
+  sentAt      DateTime?
+
+  @@index([userId, readAt])
+}
