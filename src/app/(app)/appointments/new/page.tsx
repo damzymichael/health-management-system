@@ -11,6 +11,7 @@ export default async function ScheduleAppointmentPage() {
   const patients = await prisma.patient.findMany({ orderBy: { fullName: 'asc' }});
   const staff = await prisma.staff.findMany({ orderBy: { fullName: 'asc' }});
 
+  console.log(patients)
   async function scheduleAppointment(formData: FormData) {
     "use server";
     
