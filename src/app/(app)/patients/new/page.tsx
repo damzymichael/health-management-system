@@ -4,13 +4,14 @@ import { redirect } from "next/navigation";
 import { audit } from "@/modules/audit";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { ObjectId } from "bson";
 
 export default async function RegisterPatientPage() {
   const session = await requireRole("receptionist", "admin");
 
   async function registerPatient(formData: FormData) {
     "use server";
-    
+
     // In a real app, you'd use zod for validation here
     const fullName = formData.get("fullName") as string;
     const email = formData.get("email") as string;
@@ -25,13 +26,18 @@ export default async function RegisterPatientPage() {
 
     // Note: Creating User directly bypasses Better Auth's password hashing. 
     // The patient would need to use "Forgot Password" to set a password later.
+    const userId = new ObjectId().toString(); // e.g. "650c1f2e8f1b2c001f3e4d5a"
+    const patientId = new ObjectId().toString();
+
     const user = await prisma.user.create({
       data: {
+        id: userId,
         name: fullName,
         email,
         role: "patient",
         patient: {
           create: {
+            id: patientId,
             patientNumber,
             fullName,
             gender,
@@ -39,10 +45,10 @@ export default async function RegisterPatientPage() {
             phone,
             address,
             bloodGroup,
-          }
-        }
+          },
+        },
       },
-      include: { patient: true }
+      include: { patient: true },
     });
 
     await audit({
@@ -70,7 +76,7 @@ export default async function RegisterPatientPage() {
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <form action={registerPatient} className="p-6 md:p-8 space-y-8">
-          
+
           <div className="space-y-6">
             <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-100 pb-2">Personal Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
