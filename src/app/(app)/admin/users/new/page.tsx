@@ -4,6 +4,7 @@ import { Shield, Lock, Mail, User } from "lucide-react";
 import { hashPassword } from "better-auth/crypto";
 import { requireRole } from "@/lib/rbac";
 import { ObjectId } from "bson";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function NewStaffPage() {
   await requireRole("admin"); // only admin can see this
@@ -118,9 +119,12 @@ export default async function NewStaffPage() {
         </div>
 
         <div className="pt-4 border-t border-slate-100 flex justify-end">
-          <button type="submit" className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors">
+          <SubmitButton
+            loadingText="Creating Staff Account..."
+            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+          >
             Create Staff Account
-          </button>
+          </SubmitButton>
         </div>
       </form>
     </div>

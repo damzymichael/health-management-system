@@ -1,12 +1,17 @@
-import { requireRole } from "@/lib/rbac";
+import { requireRole, requireSession } from "@/lib/rbac";
 import { prisma } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { sendNotification } from "@/modules/notifications";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function ScheduleAppointmentPage() {
-  const session = await requireRole("doctor", "nurse", "receptionist", "admin");
+  const session = await requireSession();
+  if (session.user.role === "patient") {
+    redirect("/my/appointments/new");
+  }
+  await requireRole("doctor", "nurse", "receptionist", "admin");
 
   const patients = await prisma.patient.findMany({ orderBy: { fullName: 'asc' }});
   const staff = await prisma.staff.findMany({ orderBy: { fullName: 'asc' }});
@@ -100,9 +105,13 @@ export default async function ScheduleAppointmentPage() {
             <Link href="/appointments" className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium transition-colors">
               Cancel
             </Link>
-            <button type="submit" disabled={patients.length === 0 || staff.length === 0} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+            <SubmitButton
+              loadingText="Scheduling Appointment..."
+              disabled={patients.length === 0 || staff.length === 0}
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+            >
               Schedule Appointment
-            </button>
+            </SubmitButton>
           </div>
 
         </form>

@@ -3,6 +3,7 @@ import { hashPassword } from "better-auth/crypto";
 import { redirect } from "next/navigation";
 import { Shield, Key } from "lucide-react";
 import { ObjectId } from "bson";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default function SetupAdminPage() {
   async function createInitialAdmin(formData: FormData) {
@@ -73,9 +74,15 @@ export default function SetupAdminPage() {
             <input type="password" name="password" required minLength={8} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none text-slate-900" placeholder="••••••••" />
           </div>
 
-          <button type="submit" className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 mt-6">
-            <Key size={18} /> Initialize System
-          </button>
+          <div className="mt-6">
+            <SubmitButton
+              loadingText="Initializing System..."
+              // icon={Key}
+              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+            >
+              Initialize System
+            </SubmitButton>
+          </div>
         </form>
       </div>
     </div>

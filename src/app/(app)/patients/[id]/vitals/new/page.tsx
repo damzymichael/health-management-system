@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { recordPatientVitals } from "@/modules/clinical";
 import { audit } from "@/modules/audit";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function RecordVitalsPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole("doctor", "nurse");
@@ -95,9 +96,12 @@ export default async function RecordVitalsPage({ params }: { params: Promise<{ i
             <Link href={`/patients/${id}`} className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium transition-colors">
               Cancel
             </Link>
-            <button type="submit" className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors shadow-sm">
+            <SubmitButton
+              loadingText="Saving Vitals..."
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+            >
               Save Vitals
-            </button>
+            </SubmitButton>
           </div>
 
         </form>

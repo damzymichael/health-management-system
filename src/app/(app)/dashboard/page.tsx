@@ -187,7 +187,7 @@ export default async function DashboardPage() {
 
             <div className="flex flex-wrap items-center gap-3">
               <Link
-                href="/appointments/new"
+                href="/my/appointments/new"
                 className="px-5 py-2.5 bg-white text-emerald-800 font-semibold text-sm rounded-xl hover:bg-emerald-50 transition-all shadow-sm flex items-center gap-2"
               >
                 <Calendar size={16} /> Book Visit
@@ -240,7 +240,7 @@ export default async function DashboardPage() {
               <div className="py-5 text-center text-slate-400">
                 <p className="text-sm font-medium">No upcoming appointments</p>
                 <Link
-                  href="/appointments/new"
+                  href="/my/appointments/new"
                   className="mt-2 text-xs font-semibold text-emerald-600 hover:text-emerald-700 inline-flex items-center gap-1"
                 >
                   Schedule one now <ArrowRight size={12} />

@@ -9,8 +9,8 @@ export async function recordPatientVitals(data: any) {
     }
   });
 
-  // Evaluate alerts in the background without blocking
-  checkAlertsForVitals(vitals.id).catch(console.error);
+  // Evaluate alerts reliably before action redirect
+  await checkAlertsForVitals(vitals.id).catch(console.error);
 
   return vitals;
 }
